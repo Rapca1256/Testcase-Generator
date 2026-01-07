@@ -41,3 +41,5 @@ S_i1 S_i2 S_i3 ... S_iY_i
 そして、最後に解答のソースコードを選択し、「生成」ボタンを押す。
 
 この手順で生成できます。
+
+用意されたパターンでは表現しきれない場合は、同梱されている ![in_generate.py](https://github.com/Rapca1256/Testcase-Generator/blob/main/in_generate.py) 、 ![out_generate.py](https://github.com/Rapca1256/Testcase-Generator/blob/main/out_generate.py) などを使用してお好きにカスタマイズしてください。
