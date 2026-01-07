@@ -328,5 +328,6 @@ class TestCaseGenerator:
 
 
 if __name__ == '__main__':
+    # 起動！
     a = TestCaseGenerator(Tk())
     a.master.mainloop()
