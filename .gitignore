@@ -1,5 +1,8 @@
-# README
-README.md
+# Python
+__pycache__/
+
+# VS Code
+.vscode/
 
 # sample フォルダ内の特定ファイル
 sample/01.png
