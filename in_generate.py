@@ -99,6 +99,73 @@ class Strings:
             
         print(s[0:-1], file=self.f)
 
+class Query:
+    """
+    クエリ列を一つ作る
+    """
+    def __init__(self, f, Q, styles):
+        """
+        :param Q: クエリの数
+        :param styles:
+            クエリ一つあたりのデータ。データはそれぞれタプル型で指定する。
+            
+            整数値のデータ型: ("int", min, max, duplication)
+            文字列のデータ型: ("str", length, allow_lower, allow_upper, duplication *add)
+
+            各要素の意味(int):
+                    data_min        : 生成される整数の最小値
+                    data_max        : 生成される整数の最大値
+                    duplication    : 重複を許可するかどうか（bool）
+            各要素の意味(str):
+                    length     : 文字列の長さ
+                    allow_lower    : 小文字を許可するかどうか（bool）
+                    allow_upper    : 大文字を許可するかどうか（bool）
+                    duplication    : 文字の重複を許可するかどうか（bool）
+                    add            : 追加で使用可能な文字集合
+        """
+        self.f = f
+        self.Q = Q
+        self.styles = styles
+
+        self._generate()
+    
+    def _generate(self):
+        for _ in range(self.Q):
+            generated = []
+            gen_set = set([''])
+            for style in self.styles:
+                if style[0] == "int":
+                    x = random.randint(style[1], style[2])
+                    while not style[3] and x in gen_set:
+                        x = random.randint(style[1], style[2])
+                    
+                    generated.append(x)
+                    gen_set.add(x)
+                elif style[0] == 'str':
+
+                    self.characters = [] # 使える文字
+                    if style[2]:
+                        self.characters.extend(list(string.ascii_lowercase))
+                    if style[3]:
+                        self.characters.extend(list(string.ascii_uppercase))
+                    self.characters.extend(style[5])
+                    
+                    length = style[1]
+                    l = random.choices(self.characters, k=length)
+                    s = ''.join(l)
+                    while not style[4] and s in gen_set:
+                        length = style[1]
+                        l = random.choices(self.characters, k=length)
+                        s = ''.join(l)
+                    
+                    generated.append(s)
+                    gen_set.add(s)
+            
+            print(*generated, file=self.f)
+
+
+
+
 class Case:
     """
     条件に従い、テストケースを一つ作成する
@@ -141,6 +208,16 @@ class Case:
                     allow_upper    : 大文字を許可するかどうか（bool）
                     duplication    : 文字の重複を許可するかどうか（bool）
                     add            : 追加で使用可能な文字集合
+            
+            ③ 後続のクエリ生成に関与する値
+                形式:
+                    (min, max, "query", query_info)
+                
+                各要素の意味:
+                    min, max    : クエリの個数の最小値、最大値
+                    query_info(list)  : クエリ一つあたりのデータ。データはそれぞれタプル型で指定する。
+                        整数値のデータ型: ("int", min, max, duplication)
+                        文字列のデータ型: ("str", length, allow_lower, allow_upper, duplication *add)
         """
         self.queries = queries
         self.f = f
@@ -152,7 +229,6 @@ class Case:
     def _generate(self):
         generated = []
         tasks = []
-
         for query in self.queries:
             if not query[2]:
                 generated.append(random.randint(query[0], query[1]))
@@ -173,6 +249,9 @@ class Case:
                     continue
                 tasks.append((Strings, self.f, n, length, query[8:], query[5], query[6], query[7]))
                 continue
+            elif query[2] == "query":
+                generated.append(len(query[3]))
+                tasks.append((Query, self.f, n, query[3]))
             else:
                 raise ValueError("3つ目の引数'type'が正しく設定されていません。")
         
@@ -198,6 +277,6 @@ class TestCase:
 
 
 if __name__ == '__main__':
-    PATH = r".\Generated\test.txt"
+    PATH = r".\test.txt"
     with open(PATH, "w") as f:
-        TestCase(f=f, T_min=3, T_max=5, queries=[(2, 5, "int", 30, 100, True), (2, 4, "str", 3, 5, True, False, True)])
+        Case(f, queries=[(2, 5, "query", [("int", 10, 100, True), ("int", 10, 100, True), ("str", 5, True, False, True, [])])])
