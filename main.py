@@ -73,7 +73,7 @@ class TestCaseGenerator:
 
         self.data_type_label = ttk.Label(self.frame, text="データタイプ:")
         self.data_type_label.grid(row=7, column=0, sticky=W)
-        self.data_type = ttk.Combobox(self.frame, values=["None", "Integer", "String"], state="readonly")
+        self.data_type = ttk.Combobox(self.frame, values=["None", "Integer", "String", "Query"], state="readonly")
         self.data_type.current(0)
         self.data_type.grid(row=7, column=1, sticky=(W, E))
 
@@ -113,13 +113,73 @@ class TestCaseGenerator:
         self.add_entry = ttk.Entry(self.frame, width=30)
         self.add_entry.insert(0, "")  # デフォルト値
 
+        # クエリID指定用（複数種類のクエリに対応）
+        self.query_use_id_var = BooleanVar(value=False)
+        self.query_use_id_check = ttk.Checkbutton(self.frame,
+                                                   text="複数種類のクエリを使用する（IDで区別）",
+                                                   variable=self.query_use_id_var,
+                                                   command=self.toggle_query_id)
+        self.query_use_id_check.grid(row=8, column=0, sticky=W)
+
+        self.query_id_label = ttk.Label(self.frame, text="クエリID:")
+        self.query_id_entry = ttk.Entry(self.frame, width=30)
+        self.query_id_entry.insert(0, "1")  # デフォルト値
+        
+        self.query_info_label = ttk.Label(self.frame, text="クエリ内のデータ構造:")
+        self.query_items_text = Text(self.frame, height=5, width=40, state="disabled")
+        self.query_items_text.config(bg="white")
+        
+        self.query_item_type_label = ttk.Label(self.frame, text="追加するデータ型:")
+        self.query_item_type = ttk.Combobox(self.frame, values=["Integer", "String"], state="readonly", width=27)
+        self.query_item_type.current(0)
+        self.query_item_type.bind("<<ComboboxSelected>>", self.on_query_item_type_change)
+        
+        # クエリ要素専用の入力フィールド
+        self.query_elem_int_min_label = ttk.Label(self.frame, text="整数の最小値:")
+        self.query_elem_int_min_entry = ttk.Entry(self.frame, width=30)
+        self.query_elem_int_min_entry.insert(0, "1")
+        
+        self.query_elem_int_max_label = ttk.Label(self.frame, text="整数の最大値:")
+        self.query_elem_int_max_entry = ttk.Entry(self.frame, width=30)
+        self.query_elem_int_max_entry.insert(0, "100")
+        
+        self.query_elem_str_len_label = ttk.Label(self.frame, text="文字列の長さ:")
+        self.query_elem_str_len_entry = ttk.Entry(self.frame, width=30)
+        self.query_elem_str_len_entry.insert(0, "5")
+        
+        self.query_elem_lower_var = BooleanVar(value=True)
+        self.query_elem_lower_check = ttk.Checkbutton(self.frame,
+                                                       text="小文字を許容する",
+                                                       variable=self.query_elem_lower_var)
+        
+        self.query_elem_upper_var = BooleanVar(value=False)
+        self.query_elem_upper_check = ttk.Checkbutton(self.frame,
+                                                       text="大文字を許容する",
+                                                       variable=self.query_elem_upper_var)
+        
+        self.query_elem_dup_var = BooleanVar(value=True)
+        self.query_elem_dup_check = ttk.Checkbutton(self.frame,
+                                                     text="重複を許容する",
+                                                     variable=self.query_elem_dup_var)
+        
+        self.query_elem_add_label = ttk.Label(self.frame, text="追加記号:")
+        self.query_elem_add_entry = ttk.Entry(self.frame, width=30)
+        self.query_elem_add_entry.insert(0, "")
+        
+        self.add_query_item_button = ttk.Button(self.frame, text="クエリにデータを追加", command=self.add_query_item)
+        self.clear_query_button = ttk.Button(self.frame, text="クエリをクリア", command=self.clear_query)
+        
+        # Current query items storage (dict形式でIDごとに管理)
+        self.current_query_items = {}  # {query_id: [items]}
+        self.current_query_id = None
+
         # 追加ボタン
         self.add_button = ttk.Button(self.frame, text="数値を追加", command=self.add_test_case)
         self.add_button.grid(row=9, column=0, columnspan=2, sticky=(W, E))
 
         # 区切り線
         separator2 = ttk.Separator(self.frame, orient='horizontal')
-        separator2.grid(row=8, column=0, columnspan=2, pady=10, sticky=(W, E))
+        separator2.grid(row=10, column=0, columnspan=2, pady=10, sticky=(W, E))
 
         self.source_path_label = ttk.Label(
             self.frame,
@@ -127,7 +187,7 @@ class TestCaseGenerator:
             width=80
         )
         self.source_path_label.grid(
-            row=10, column=0, columnspan=2,
+            row=11, column=0, columnspan=2,
             sticky="w", padx=5, pady=5
         )
 
@@ -137,7 +197,7 @@ class TestCaseGenerator:
             command=self.get_source
         )
         self.get_source_button.grid(
-            row=10, column=1,
+            row=11, column=1,
             sticky="e", padx=5, pady=5
         )
 
@@ -166,6 +226,27 @@ class TestCaseGenerator:
                 self.upper_check.grid_forget()
                 self.add_label.grid_forget()
                 self.add_entry.grid_forget()
+                
+                self.query_use_id_check.grid_forget()
+                self.query_id_label.grid_forget()
+                self.query_id_entry.grid_forget()
+                self.query_info_label.grid_forget()
+                self.query_items_text.grid_forget()
+                self.query_item_type_label.grid_forget()
+                self.query_item_type.grid_forget()
+                self.query_elem_int_min_label.grid_forget()
+                self.query_elem_int_min_entry.grid_forget()
+                self.query_elem_int_max_label.grid_forget()
+                self.query_elem_int_max_entry.grid_forget()
+                self.query_elem_str_len_label.grid_forget()
+                self.query_elem_str_len_entry.grid_forget()
+                self.query_elem_lower_check.grid_forget()
+                self.query_elem_upper_check.grid_forget()
+                self.query_elem_add_label.grid_forget()
+                self.query_elem_add_entry.grid_forget()
+                self.query_elem_dup_check.grid_forget()
+                self.add_query_item_button.grid_forget()
+                self.clear_query_button.grid_forget()
 
 
                 separator2.grid(row=8, column=0, columnspan=2, pady=10, sticky=(W, E))
@@ -188,6 +269,27 @@ class TestCaseGenerator:
                 self.data_min_entry.grid_forget()
                 self.data_max_entry.grid_forget()
                 self.duplication_check.grid_forget()
+                
+                self.query_use_id_check.grid_forget()
+                self.query_id_label.grid_forget()
+                self.query_id_entry.grid_forget()
+                self.query_info_label.grid_forget()
+                self.query_items_text.grid_forget()
+                self.query_item_type_label.grid_forget()
+                self.query_item_type.grid_forget()
+                self.query_elem_int_min_label.grid_forget()
+                self.query_elem_int_min_entry.grid_forget()
+                self.query_elem_int_max_label.grid_forget()
+                self.query_elem_int_max_entry.grid_forget()
+                self.query_elem_str_len_label.grid_forget()
+                self.query_elem_str_len_entry.grid_forget()
+                self.query_elem_lower_check.grid_forget()
+                self.query_elem_upper_check.grid_forget()
+                self.query_elem_add_label.grid_forget()
+                self.query_elem_add_entry.grid_forget()
+                self.query_elem_dup_check.grid_forget()
+                self.add_query_item_button.grid_forget()
+                self.clear_query_button.grid_forget()
 
                 separator2.grid(row=8, column=0, columnspan=2, pady=10, sticky=(W, E))
                 
@@ -206,6 +308,67 @@ class TestCaseGenerator:
 
                 gen_row = 16
                 text_row = 18
+            elif val == "Query":
+                # Hide integer and string widgets
+                self.type_label_min.grid_forget()
+                self.type_label_max.grid_forget()
+                self.data_min_entry.grid_forget()
+                self.data_max_entry.grid_forget()
+                self.length_min_label.grid_forget()
+                self.length_min_entry.grid_forget()
+                self.length_max_label.grid_forget()
+                self.length_max_entry.grid_forget()
+                self.lower_check.grid_forget()
+                self.upper_check.grid_forget()
+                self.add_label.grid_forget()
+                self.add_entry.grid_forget()
+                self.duplication_check.grid_forget()
+                
+                separator2.grid(row=8, column=0, columnspan=2, pady=10, sticky=(W, E))
+                
+                # クエリID使用チェックボックス
+                self.query_use_id_check.grid(row=9, column=0, columnspan=2, sticky=W)
+                
+                # クエリ情報表示
+                row_offset = 10
+                if self.query_use_id_var.get():
+                    self.query_id_label.grid(row=row_offset, column=0, sticky=W)
+                    self.query_id_entry.grid(row=row_offset, column=1, sticky=(W, E))
+                    row_offset += 1
+                
+                self.query_info_label.grid(row=row_offset, column=0, sticky=W)
+                self.query_items_text.grid(row=row_offset+1, column=0, columnspan=2, sticky=(W, E))
+                
+                # クエリ要素のデータ型選択
+                self.query_item_type_label.grid(row=row_offset+2, column=0, sticky=W)
+                self.query_item_type.grid(row=row_offset+2, column=1, sticky=(W, E))
+                
+                # データ型に応じた入力フィールド（整数の場合）
+                current_type = self.query_item_type.get()
+                field_row = row_offset + 3
+                
+                if current_type == "Integer":
+                    self.query_elem_int_min_label.grid(row=field_row, column=0, sticky=W)
+                    self.query_elem_int_min_entry.grid(row=field_row, column=1, sticky=(W, E))
+                    self.query_elem_int_max_label.grid(row=field_row+1, column=0, sticky=W)
+                    self.query_elem_int_max_entry.grid(row=field_row+1, column=1, sticky=(W, E))
+                    self.query_elem_dup_check.grid(row=field_row+2, column=0, sticky=W)
+                    button_row = field_row + 3
+                else:  # String
+                    self.query_elem_str_len_label.grid(row=field_row, column=0, sticky=W)
+                    self.query_elem_str_len_entry.grid(row=field_row, column=1, sticky=(W, E))
+                    self.query_elem_lower_check.grid(row=field_row+1, column=0, sticky=W)
+                    self.query_elem_upper_check.grid(row=field_row+2, column=0, sticky=W)
+                    self.query_elem_dup_check.grid(row=field_row+3, column=0, sticky=W)
+                    self.query_elem_add_label.grid(row=field_row+4, column=0, sticky=W)
+                    self.query_elem_add_entry.grid(row=field_row+4, column=1, sticky=(W, E))
+                    button_row = field_row + 5
+                
+                self.add_query_item_button.grid(row=button_row, column=0, sticky=(W, E))
+                self.clear_query_button.grid(row=button_row, column=1, sticky=(W, E))
+                
+                gen_row = button_row + 2
+                text_row = gen_row + 2
             else:
                 # None の場合はラベルを隠し、ウィジェットを上に戻す
                 try:
@@ -222,6 +385,26 @@ class TestCaseGenerator:
                     self.upper_check.grid_forget()
                     self.add_label.grid_forget()
                     self.add_entry.grid_forget()
+                    self.query_use_id_check.grid_forget()
+                    self.query_id_label.grid_forget()
+                    self.query_id_entry.grid_forget()
+                    self.query_info_label.grid_forget()
+                    self.query_items_text.grid_forget()
+                    self.query_item_type_label.grid_forget()
+                    self.query_item_type.grid_forget()
+                    self.query_elem_int_min_label.grid_forget()
+                    self.query_elem_int_min_entry.grid_forget()
+                    self.query_elem_int_max_label.grid_forget()
+                    self.query_elem_int_max_entry.grid_forget()
+                    self.query_elem_str_len_label.grid_forget()
+                    self.query_elem_str_len_entry.grid_forget()
+                    self.query_elem_lower_check.grid_forget()
+                    self.query_elem_upper_check.grid_forget()
+                    self.query_elem_add_label.grid_forget()
+                    self.query_elem_add_entry.grid_forget()
+                    self.query_elem_dup_check.grid_forget()
+                    self.add_query_item_button.grid_forget()
+                    self.clear_query_button.grid_forget()
                     separator3.grid_forget()
                 except Exception:
                     pass
@@ -239,9 +422,102 @@ class TestCaseGenerator:
 
         self.data_type.bind("<<ComboboxSelected>>", on_data_type_change)
     
+    def toggle_query_id(self):
+        """クエリIDフィールドの表示/非表示を切り替え"""
+        if self.query_use_id_var.get():
+            # IDフィールドを表示する行番号を取得
+            current_row = self.query_use_id_check.grid_info()['row']
+            self.query_id_label.grid(row=current_row + 1, column=0, sticky=W)
+            self.query_id_entry.grid(row=current_row + 1, column=1, sticky=(W, E))
+        else:
+            self.query_id_label.grid_forget()
+            self.query_id_entry.grid_forget()
+    
+    def on_query_item_type_change(self, event=None):
+        """クエリ要素のデータ型に応じて入力フィールドを切り替え"""
+        item_type = self.query_item_type.get()
+        
+        # 既存のフィールドを非表示
+        self.query_elem_int_min_label.grid_forget()
+        self.query_elem_int_min_entry.grid_forget()
+        self.query_elem_int_max_label.grid_forget()
+        self.query_elem_int_max_entry.grid_forget()
+        self.query_elem_str_len_label.grid_forget()
+        self.query_elem_str_len_entry.grid_forget()
+        self.query_elem_lower_check.grid_forget()
+        self.query_elem_upper_check.grid_forget()
+        self.query_elem_add_label.grid_forget()
+        self.query_elem_add_entry.grid_forget()
+        self.query_elem_dup_check.grid_forget()
+        
+        if item_type == "Integer":
+            self.query_elem_int_min_label.grid(row=12, column=0, sticky=W)
+            self.query_elem_int_min_entry.grid(row=12, column=1, sticky=(W, E))
+            self.query_elem_int_max_label.grid(row=13, column=0, sticky=W)
+            self.query_elem_int_max_entry.grid(row=13, column=1, sticky=(W, E))
+            self.query_elem_dup_check.grid(row=14, column=0, sticky=W)
+        elif item_type == "String":
+            self.query_elem_str_len_label.grid(row=12, column=0, sticky=W)
+            self.query_elem_str_len_entry.grid(row=12, column=1, sticky=(W, E))
+            self.query_elem_lower_check.grid(row=13, column=0, sticky=W)
+            self.query_elem_upper_check.grid(row=14, column=0, sticky=W)
+            self.query_elem_dup_check.grid(row=15, column=0, sticky=W)
+            self.query_elem_add_label.grid(row=16, column=0, sticky=W)
+            self.query_elem_add_entry.grid(row=16, column=1, sticky=(W, E))
+    
+    def add_query_item(self):
+        """クエリ内のデータ項目を追加"""
+        item_type = self.query_item_type.get()
+        
+        # クエリIDの取得
+        if self.query_use_id_var.get():
+            query_id = self.query_id_entry.get()
+        else:
+            query_id = None  # リスト形式の場合
+        
+        if item_type == "Integer":
+            query_item = ("int", 
+                         int(self.query_elem_int_min_entry.get()), 
+                         int(self.query_elem_int_max_entry.get()), 
+                         self.query_elem_dup_var.get())
+            display_text = f"Integer: min={query_item[1]}, max={query_item[2]}, dup={query_item[3]}"
+        elif item_type == "String":
+            add_chars = list(self.query_elem_add_entry.get())
+            query_item = ("str", 
+                         int(self.query_elem_str_len_entry.get()), 
+                         self.query_elem_lower_var.get(), 
+                         self.query_elem_upper_var.get(), 
+                         self.query_elem_dup_var.get(), 
+                         add_chars)
+            display_text = f"String: len={query_item[1]}, lower={query_item[2]}, upper={query_item[3]}, dup={query_item[4]}, add={add_chars}"
+        else:
+            return
+        
+        # クエリIDごとに要素を管理
+        if query_id not in self.current_query_items:
+            self.current_query_items[query_id] = []
+        
+        self.current_query_items[query_id].append(query_item)
+        
+        # 表示テキストにIDを含める
+        if query_id is not None:
+            display_text = f"[ID:{query_id}] {display_text}"
+        
+        self.query_items_text.config(state="normal")
+        self.query_items_text.insert(END, display_text + "\n")
+        self.query_items_text.config(state="disabled")
+    
+    def clear_query(self):
+        """クエリ内容をクリア"""
+        self.current_query_items = {}
+        self.query_items_text.config(state="normal")
+        self.query_items_text.delete(1.0, END)
+        self.query_items_text.config(state="disabled")
+    
     def get_source(self):
+        """解答のソースコードを選択"""
         file_path = filedialog.askopenfilename(
-            title="ファイルを選択してください",
+            title="解答のソースコードを選択",
             filetypes=[
                 ("Python files", "*.py"),
                 ("C++ files", "*.cpp"),
@@ -249,8 +525,8 @@ class TestCaseGenerator:
             ]
         )
         if file_path:
-            self.source_path_label.config(text= "解答のソースコード: " + file_path)
-
+            self.source_path_label.config(text=f"解答のソースコード: {file_path}")
+    
     def add_test_case(self):
         # ここで各種パラメータを取得し、テストケースを生成する処理を実装
         if self.data_type.get() == "Integer":
@@ -262,6 +538,29 @@ class TestCaseGenerator:
                      int(self.length_min_entry.get()), int(self.length_max_entry.get()),
                      self.lower_var.get(), self.upper_var.get(),
                      self.duplication_var.get(), list(self.add_entry.get()))
+        elif self.data_type.get() == "Query":
+            if not self.current_query_items:
+                messagebox.showwarning("警告", "クエリにデータが追加されていません。")
+                return
+            
+            # dict形式かlist形式かを判定
+            if self.query_use_id_var.get():
+                # dict形式: 複数種類のクエリ（IDで区別）
+                query_data = {}
+                for qid, items in self.current_query_items.items():
+                    query_data[int(qid)] = items
+                query = (int(self.num_min_entry.get()), int(self.num_max_entry.get()), "query", query_data)
+            else:
+                # list形式: 単一種類のクエリ
+                # 最初のキーの要素を使用（Noneキー）
+                query_list = self.current_query_items.get(None, [])
+                if not query_list:
+                    messagebox.showwarning("警告", "クエリにデータが追加されていません。")
+                    return
+                query = (int(self.num_min_entry.get()), int(self.num_max_entry.get()), "query", query_list)
+            
+            # Clear current query items after adding
+            self.clear_query()
         else:
 
             query = (int(self.num_min_entry.get()), int(self.num_max_entry.get()), None)
@@ -315,8 +614,8 @@ class TestCaseGenerator:
                         timeout=5
                     )
 
-            # zip にまとめる（Generated の中身だけ）
-            zip_path = "testcase.zip"   # ← 保存先（temp_dir の外！）
+            # zip にまとめる(Generated の中身だけ)
+            zip_path = "testcase.zip"   # ← 保存先(temp_dir の外!)
             with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as z:
                 for filename in os.listdir(generated_dir):
                     full_path = os.path.join(generated_dir, filename)
@@ -328,6 +627,6 @@ class TestCaseGenerator:
 
 
 if __name__ == '__main__':
-    # 起動！
+    # 起動!
     a = TestCaseGenerator(Tk())
     a.master.mainloop()

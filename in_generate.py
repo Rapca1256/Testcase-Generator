@@ -133,34 +133,65 @@ class Query:
         for _ in range(self.Q):
             generated = []
             gen_set = set([''])
-            for style in self.styles:
-                if style[0] == "int":
-                    x = random.randint(style[1], style[2])
-                    while not style[3] and x in gen_set:
+            if type(self.styles) == list or type(self.styles) == tuple:
+                for style in self.styles:
+                    if style[0] == "int":
                         x = random.randint(style[1], style[2])
-                    
-                    generated.append(x)
-                    gen_set.add(x)
-                elif style[0] == 'str':
+                        while not style[3] and x in gen_set:
+                            x = random.randint(style[1], style[2])
+                        
+                        generated.append(x)
+                        gen_set.add(x)
+                    elif style[0] == 'str':
 
-                    self.characters = [] # 使える文字
-                    if style[2]:
-                        self.characters.extend(list(string.ascii_lowercase))
-                    if style[3]:
-                        self.characters.extend(list(string.ascii_uppercase))
-                    self.characters.extend(style[5])
-                    
-                    length = style[1]
-                    l = random.choices(self.characters, k=length)
-                    s = ''.join(l)
-                    while not style[4] and s in gen_set:
+                        self.characters = [] # 使える文字
+                        if style[2]:
+                            self.characters.extend(list(string.ascii_lowercase))
+                        if style[3]:
+                            self.characters.extend(list(string.ascii_uppercase))
+                        self.characters.extend(style[5])
+                        
                         length = style[1]
                         l = random.choices(self.characters, k=length)
                         s = ''.join(l)
-                    
-                    generated.append(s)
-                    gen_set.add(s)
-            
+                        while not style[4] and s in gen_set:
+                            length = style[1]
+                            l = random.choices(self.characters, k=length)
+                            s = ''.join(l)
+                        
+                        generated.append(s)
+                        gen_set.add(s)
+            elif type(self.styles) == dict:
+                styles = random.choice(list(self.styles.items()))
+                generated.append(styles[0])
+                for style in styles[1]:
+                    if style[0] == "int":
+                        x = random.randint(style[1], style[2])
+                        while not style[3] and x in gen_set:
+                            x = random.randint(style[1], style[2])
+                        
+                        generated.append(x)
+                        gen_set.add(x)
+                    elif style[0] == 'str':
+
+                        self.characters = [] # 使える文字
+                        if style[2]:
+                            self.characters.extend(list(string.ascii_lowercase))
+                        if style[3]:
+                            self.characters.extend(list(string.ascii_uppercase))
+                        self.characters.extend(style[5])
+                        
+                        length = style[1]
+                        l = random.choices(self.characters, k=length)
+                        s = ''.join(l)
+                        while not style[4] and s in gen_set:
+                            length = style[1]
+                            l = random.choices(self.characters, k=length)
+                            s = ''.join(l)
+                        
+                        generated.append(s)
+                        gen_set.add(s)
+
             print(*generated, file=self.f)
 
 
@@ -252,6 +283,8 @@ class Case:
             elif query[2] == "query":
                 generated.append(len(query[3]))
                 tasks.append((Query, self.f, n, query[3]))
+
+
             else:
                 raise ValueError("3つ目の引数'type'が正しく設定されていません。")
         
@@ -279,4 +312,4 @@ class TestCase:
 if __name__ == '__main__':
     PATH = r".\test.txt"
     with open(PATH, "w") as f:
-        Case(f, queries=[(2, 5, "query", [("int", 10, 100, True), ("int", 10, 100, True), ("str", 5, True, False, True, [])])])
+        pass
